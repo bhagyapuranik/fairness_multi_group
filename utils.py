@@ -1,6 +1,6 @@
 from scipy.stats import norm
 import numpy as np
-from os.path import exists
+import itertools
 
 def gaussian_expected_top_r_of_n(r, n, mu, sigma, method='approx'):
     '''
@@ -51,6 +51,12 @@ def get_greedy_reward(gaussian_tables, N, acceptance_ratio, state, action):
             greedy_reward += np.sum(gaussian_tables[i][state[i], :int(action[i])])
         greedy_reward = greedy_reward/(N*acceptance_ratio)
     return greedy_reward
+
+def possible_actions(k, N, highs):
+    for bars in itertools.combinations(range(N+k-1), k-1):
+        vec = np.array([b-a-1 for a, b in zip((-1,) + bars, bars + (N+k-1,))])
+        if (vec <= highs).all():
+            yield vec
 
 def process_multigroup(N, mean, std, acceptance_ratio, fairness_target, initial_theta, lambda_, eta, num_instances, num_rounds, decay):
     '''
@@ -104,12 +110,12 @@ def process_multigroup(N, mean, std, acceptance_ratio, fairness_target, initial_
                     break
 
             if not np.any(optimal_actions_table[tuple(state)]):
-                reward_table = np.zeros(np.ones(num_groups, dtype=int)*(int(N*acceptance_ratio+1)))
-                for index, _ in np.ndenumerate(reward_table):
-                    reward_table[index] = get_greedy_reward(gaussian_tables, N, acceptance_ratio, state, index)
-                    for i in range(num_groups):
-                        reward_table[index] -= lambda_*np.square(index[i]/(N*acceptance_ratio)-fairness_target[i])
-                optimal_actions_table[tuple(state)] = np.unravel_index(np.argmax(reward_table), reward_table.shape)
+                action_list = list(possible_actions(num_groups, int(N*acceptance_ratio), state))
+                reward_list = np.zeros(len(action_list))
+                for i in range(len(action_list)):
+                    reward_list[i] = get_greedy_reward(gaussian_tables, N, acceptance_ratio, state, action_list[i])
+                    reward_list[i] = reward_list[i] - lambda_*np.square(np.linalg.norm(action_list[i]/(N*acceptance_ratio)-fairness_target))
+                optimal_actions_table[tuple(state)] = action_list[np.argmax(reward_list)]
             
             action = optimal_actions_table[tuple(state)]
             theta = np.clip(theta + eta*(action/(N*acceptance_ratio)-state/N),0,1)
@@ -119,8 +125,3 @@ def process_multigroup(N, mean, std, acceptance_ratio, fairness_target, initial_
             thetas[iter, t, :] = theta
     
     return applicants, admissions, thetas
-            
-
-            
-
-        
