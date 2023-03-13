@@ -119,6 +119,7 @@ def process_multigroup(N, mean, std, acceptance_ratio, fairness_target, initial_
             
             action = optimal_actions_table[tuple(state)]
             theta = np.clip(theta + eta*(action/(N*acceptance_ratio)-state/N),0,1)
+            theta = theta/np.sum(theta)
 
             applicants[iter, t, :] = state/N
             admissions[iter, t, :] = action/(N*acceptance_ratio)
