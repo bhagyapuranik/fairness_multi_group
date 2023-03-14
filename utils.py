@@ -99,7 +99,8 @@ def process_multigroup(N, mean, std, acceptance_ratio, fairness_target, initial_
     optimal_actions_table = np.zeros(np.hstack([np.ones(num_groups, dtype=int)*(N+1), num_groups]))
 
     for iter in range(num_instances):
-        print('Processing instance %d' % iter)
+        if iter%10==0:
+            print('Processing instance %d' % iter)
 
         theta = initial_theta
         for t in range(num_rounds):
